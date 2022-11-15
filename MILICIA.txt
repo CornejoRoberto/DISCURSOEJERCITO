@@ -1,0 +1,153 @@
+
+-----PRIMER SELECT INFORMACIÓN DEL USUARIO----
+
+SELECT SOL_CODE as "Codigo Soldado", tipo_sol.info_Tipo as "Rango", SOL_NAME as "Nombre", SOL_APELLIDO as "Apellido", estadofisico.sol_estatura as "Altura en cm", 
+estadofisico.sol_peso as "Peso KG", estadofisico.Sol_Sangre as "Tipo de sangre", FECHA_NACIMIENTO, FECHA_ENLISTE 
+from SOLDADOS inner join estadofisico on soldados.ID_SOL=estadofisico.ID_SOL
+inner join tipo_sol on soldados.tipo_sol_id=tipo_sol.tipo_sol_id
+
+
+
+----SEGUNDO SELECT CON LA INFORMACIÓN DEL INVENTARIO---
+
+SELECT MISION.MISION_ID, batallon.BATA_ID as "Batallon_ID", batallon.bata_descripcion as "Batallon_Asignado", 
+MIS_INICIO as "Inicio de la Mision", MIS_FINAL as "Final de la Mision" , MIS_DESCRIPCION AS "Descripción", 
+inventario.inv_id as "Inventario_ID", INVENTARIO.inv_armas AS "Armas Otorgadas",
+Inventario.INV_DANOS as "Armas Dañadas",INVENTARIO.inv_raciones as "Raciones comida" 
+from MISION inner join inventario on Mision.MISION_ID=inventario.MISION_ID
+inner join batallon on MISION.bata_id=batallon.bata_id
+
+
+---TERCERA SELECT CON LA INFORMACIÓN DEL CASTIGO---
+
+SELECT  SOLDADOS.SOL_CODE as "SOL_CODE", CAS_ID, SOLDADOS.SOL_NAME as "Nombre", SOLDADOS.sol_apellido as "Apellido", 
+CAS_MOTIVO as "Motivo", CAS_INCIDENT as "Incidente", 
+cas_inicio as "Inicio", CAS_FINAL as "Final", 
+CAS_COMENTARIOS as "Comentarios"
+FROM CASTIGOS inner join SOLDADOS on castigos.SOL_CODE=soldados.SOL_CODE
+
+
+---HISTORIAL DE RETIROS--
+
+SELECT  SOLDADOS.SOL_CODE as "SOL_CODE", TIPO_SOL_ID AS "RANGO", SOLDADOS.SOL_NAME as "NOMBRE", 
+SOLDADOS.sol_apellido as "APELLIDO",FECHA_ENLISTE AS "FECHA ENLISTE", 
+SOL_RETIRO.FECHA_SALIDA AS "FECHA SALIDA", SOL_RETIRO.RETIRO_COMEN AS "MOTIVO"
+FROM SOLDADOS inner join SOL_RETIRO on SOLDADOS.SOL_CODE=SOL_RETIRO.SOL_CODE
+
+
+
+---TRIGGER PARA LIMITAR LOS CASTIGOS-------
+create or replace function TR_T1 () RETURNS TRIGGER 
+as 
+$$
+declare
+		SOL int ;
+		PRIMA int; 
+begin
+   select count (*) into SOL from CASTIGOS
+   where SOL_CODE = SOL_CODE;
+   select SOL_CODE into PRIMA from  CASTIGOS where SOL_CODE = new.SOL_CODE ;
+   if (SOL>2)then 
+   raise notice 'FUNCIONAMIENTO DEL TRIGGER EN PROCESO';
+   raise exception 'ESTE USUARIO ALCANZÓ EL LIMITE DE CASTIGOS Y SE DEBERÁ APLICAR UNA SANCIÓN MAYOR';
+   END IF; 
+   return new;
+end;
+$$
+language plpgsql;
+
+
+CREATE TRIGGER TR_T1  BEFORE  INSERT
+ ON Castigos FOR EACH ROW 
+ EXECUTE PROCEDURE TR_T1 ();
+
+
+-----CURSOR PARA PRESENTAR LA INFORMACIÓN DEL BATALLON--------
+DO $$
+DECLARE                                              
+		INFOR RECORD;
+		CURSOR_BATA CURSOR FOR 
+							  SELECT
+							  soldados.sol_code as CODIGO_SOLDADO,
+							  lista_sol.bata_id as BATALLON_ID,
+							  soldados.sol_name as NOMBRE, soldados.sol_apellido as APELLIDO,
+                              mision.mision_id as MISION_ID, mision.mis_descripcion AS DESCRIPCION
+							  from soldados
+							  inner join lista_sol on lista_sol.sol_code = soldados.sol_code
+                              inner join MISION on lista_sol.bata_id=mision.bata_id;
+BEGIN
+OPEN CURSOR_BATA;
+FETCH CURSOR_BATA INTO INFOR;
+WHILE(FOUND)LOOP
+RAISE NOTICE '•CODIGO_SOLDADO: %  •BATALLON_ID: %   •MISION_ID:%  •DESCRIPCION:% •APELLIDO:%  •NOMBRE: %',
+	INFOR.CODIGO_SOLDADO,
+	INFOR.BATALLON_ID,
+    INFOR.MISION_ID,
+    INFOR.DESCRIPCION,
+    INFOR.APELLIDO,
+	INFOR.NOMBRE;
+FETCH CURSOR_BATA INTO INFOR;
+END LOOP;
+END $$
+LANGUAGE PLPGSQL;   
+
+
+
+------PROCEDIMIENTO ALMACENADO QUE DEVUELVA EL TOTAL DE LAS ARMAS QUE QUEDARON LUEGO DE UNA MISION------
+CREATE fUNCTION public."INVENTARIO_TOTAL"(
+	"var1" integer)
+    RETURNS integer
+    LANGUAGE 'plpgsql'
+AS $BODY$
+declare var numeric;
+begin
+    select (inv_armas-inv_danos) into var from inventario 
+    where inv_id = var1;
+    
+    return var ;
+end;
+$BODY$;
+
+
+select "INVENTARIO_TOTAL"(4312)
+
+
+----CODIGO DE LA CONSULTA EN IREPORT--------
+SELECT SOL_CODE as "Codigo Soldado", SOL_NAME as "Nombre", SOL_APELLIDO as "Apellido", estadofisico.sol_estatura as "Altura en cm", 
+estadofisico.sol_peso as "Peso KG"
+from SOLDADOS inner join estadofisico on soldados.ID_SOL=estadofisico.ID_SOL
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
